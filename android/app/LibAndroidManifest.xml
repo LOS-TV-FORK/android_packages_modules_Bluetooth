@@ -19,6 +19,9 @@
              android:permission="android.permission.ACCESS_BLUETOOTH_SHARE">
             <intent-filter>
                 <action android:name="android.bluetooth.IBluetooth"/>
+                <!-- Required by SystemServer BluetoothComponent which looks up
+                     android.bluetooth.IAdapter (framework/AOSP rename skew) -->
+                <action android:name="android.bluetooth.IAdapter"/>
             </intent-filter>
         </service>
         <service android:process="@string/process"
