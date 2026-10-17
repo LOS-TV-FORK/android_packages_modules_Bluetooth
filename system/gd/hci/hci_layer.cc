@@ -464,19 +464,29 @@ struct HciLayer::impl {
         auto view = CommandCompleteView::Create(event);
         log::assert_that(view.IsValid(), "assert failed: view.IsValid()");
         auto op_code = view.GetCommandOpCode();
-        log::assert_that(op_code == OpCode::NONE,
-                         "Received {} event with OpCode {} without a waiting command(is the HAL "
-                         "sending commands, but not handling the events?)",
-                         EventCodeText(event_code), OpCodeText(op_code));
+        if (op_code != OpCode::NONE) {
+          // Some controllers emit unsolicited completions (e.g. delayed
+          // vendor responses after re-enumeration). Drop them entirely:
+          // logging with no waiting command and dispatching below both
+          // assume a non-empty queue and abort. Only this empty-queue
+          // case is relaxed.
+          log::warn(
+              "Dropping {} event with OpCode {} without a waiting command",
+              EventCodeText(event_code), OpCodeText(op_code));
+          return;
+        }
       }
       if (event_code == EventCode::COMMAND_STATUS) {
         auto view = CommandStatusView::Create(event);
         log::assert_that(view.IsValid(), "assert failed: view.IsValid()");
         auto op_code = view.GetCommandOpCode();
-        log::assert_that(op_code == OpCode::NONE,
-                         "Received {} event with OpCode {} without a waiting command(is the HAL "
-                         "sending commands, but not handling the events?)",
-                         EventCodeText(event_code), OpCodeText(op_code));
+        if (op_code != OpCode::NONE) {
+          // Same as COMMAND_COMPLETE above: drop, do not abort.
+          log::warn(
+              "Dropping {} event with OpCode {} without a waiting command",
+              EventCodeText(event_code), OpCodeText(op_code));
+          return;
+        }
       }
       std::unique_ptr<CommandView> no_waiting_command{nullptr};
       log_hci_event(no_waiting_command, event, storage_);
